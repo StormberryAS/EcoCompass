@@ -1,0 +1,21 @@
+Eco‑Compass – Solar‑Powered Energy Planner
+
+Core Functionality:
+- Estimate daily solar‑energy generation for a given roof orientation and tilt.
+- Interactive 3‑D glass‑styled roof model (using CSS 3D transforms).
+- Export a PDF report summarizing potential savings and energy yield.
+
+Why it fits:
+- Directly utilizes SunApp’s solar‑position data for a practical sustainability use‑case.
+- Appeals to eco‑conscious users and homeowners.
+- Maintains the high-end, vibecoded aesthetic.
+
+Potential UI Elements:
+- 3D roof visualizer that updates as you change orientation.
+- Energy generation graph (glass‑morphism style).
+- Simple "Download Report" button.
+
+Design & Development Rules:
+- All pages must have footers as similar to SunApp as possible.
+- The favicon in SVG must be in the mainhead.
+- Once ready, I want to see it in localhost before we git push it.
