@@ -320,8 +320,9 @@ if (typeof document !== 'undefined') {
     for (const city of CITIES) {
       const name = city.fold;
       const country = city.cfold;
-      if (name.startsWith(qf)) starts.push(city);
-      else if (name.includes(qf) || country.includes(qf)) contains.push(city);
+      // city.alt is the folded English exonym; see cities.js.
+      if (name.startsWith(qf) || city.alt.startsWith(qf)) starts.push(city);
+      else if (name.includes(qf) || city.alt.includes(qf) || country.includes(qf)) contains.push(city);
     }
     state.matches = starts.concat(contains).slice(0, 8);
     state.highlightIndex = -1;
