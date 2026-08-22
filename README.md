@@ -43,3 +43,13 @@ node --test test.js
 
 ## Credits
 Built by [Stormberry AS](https://stormberry.as). Proudly powered by sovereign AI agents.
+
+## Disclaimer
+
+Supplied free of charge, **as is**, with no warranty of any kind. Using it creates no client or advisory relationship with Stormberry AS, and nothing it produces is professional advice.
+
+**Not a basis for a purchase.** Yield figures are theoretical estimates from location, roof geometry and clear-sky models. They exclude shading, soiling, panel degradation, inverter losses, local weather and grid constraints, and real installations commonly produce materially less. Obtain a site survey and a written quotation before spending money on solar equipment.
+
+This is a **functioning prototype**, not a certified instrument and not a professional service. Values are computed or modelled, not measured. Check anything that matters against an authoritative source before you act on it. Stormberry AS reimburses no cost or loss arising from use of this application.
+
+Full terms: [DISCLAIMER.md](DISCLAIMER.md).
