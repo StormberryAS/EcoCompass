@@ -10,7 +10,7 @@
   'use strict';
 
   var APP_ID = 'ecocompass';
-  var VERSION = '1';
+  var VERSION = '2';
   var MANDATORY = false;
 
   /* The version rides in the key so that materially new wording re-prompts
@@ -63,6 +63,7 @@
     '<div class="sb-gate-scroll">',
     '<div class="sb-gate-body" id="' + BODY_ID + '">',
     '<p>This is a functioning prototype, published to show what Stormberry AS builds. It is not a certified instrument, not a professional service, and not a substitute for an authoritative source.</p>',
+    '<p>It is <strong>not a finished product</strong>, it is not maintained as one, and <strong>it will eventually stop working</strong>: data moves, interfaces change, and nothing here is kept in step with them. Its purpose is to show a potential use of AI, making a possibility visible quickly so it can be judged and then built properly if it is worth building.</p>',
     '<p><strong>These are estimates, not a quotation.</strong> Yield and savings figures come from location, roof geometry and clear-sky models. They exclude shading, soiling, panel degradation, inverter losses and local weather, and real installations commonly produce materially less.</p>',
     '<p>Get a site survey and a written quotation before spending money on solar equipment.</p>',
     '</div>',
