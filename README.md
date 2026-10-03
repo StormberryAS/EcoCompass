@@ -6,19 +6,18 @@ Privacy-first solar energy planner. EcoCompass estimates daily and annual roofto
 
 ## Features
 - **City search**: rapid, offline autocomplete for major cities worldwide, with strong Nordic and Brazilian coverage.
-- **On-device geolocation**: retrieve your current coordinates with one click.
-- **Manual GPS input**: plan a roof at any arbitrary point on the globe.
+- **Manual GPS input**: plan a roof at any arbitrary point on the globe. A decimal comma works as well as a point (`60,39` or `60.39`), and so does a typographic minus; anything out of range is refused with a message rather than computed.
 - **Interactive 3D roof model**: a glass-styled house built entirely with CSS 3D transforms; the roof pitches and rotates live as you move the tilt and orientation sliders.
 - **Clear-sky energy model**: Kasten-Young air mass, clear-sky irradiance and plane-of-array geometry, scaled by a user-set sky-clearness factor. Estimates are clearly labelled as clear-sky model estimates, not quotations.
 - **Energy graphs**: hourly generation curve for the selected date and a monthly yield bar chart, rendered as inline SVG.
-- **Savings projection**: annual saving from your electricity price, in kr, €, £ or $.
+- **Savings projection**: annual saving from your electricity price, in kr, €, £ or $. The price takes a decimal comma too (`1,50`), and the value used is shown back under the field.
 - **Printable report**: one click opens your browser's print dialog with a clean, white-background summary; choose Save as PDF.
 - **Polar edge cases**: Polar Night days simply render a flat zero curve, no errors.
 - **Responsive layout**: optimised for mobile and desktop, two-column on wide screens.
 
 ## Architecture
 - **Vanilla HTML/CSS/JS**, no frameworks, no build step.
-- **Privacy first**, no cookies, no tracking, zero external calls; everything is computed in the browser.
+- **Privacy first**, no cookies, no tracking, zero external calls; everything is computed in the browser. The page never asks for the device's location either: a place comes from city search or from typed coordinates.
 - Stormberry dark-mode glassmorphism design system, Inter typography.
 - **Sovereign AI**, built and maintained using high-speed agentic workflows.
 
@@ -35,7 +34,7 @@ python3 -m http.server 8000
 Open `http://localhost:8000` in your browser.
 
 ### Running the model tests
-The pure energy-model functions are covered by a `node:test` suite:
+The pure energy-model functions and the number parser are covered by a `node:test` suite:
 
 ```bash
 node --test test.js

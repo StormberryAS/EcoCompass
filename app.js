@@ -19,6 +19,10 @@
  *      hour, which is plenty for an energy estimate.
  *   4. The pure model functions are DOM-free and exported for the
  *      node:test suite; the DOM layer only runs in a browser.
+ *   5. A place comes from city search or from typed coordinates.
+ *      There is no device-location option: the stormberry.as zone
+ *      sends Permissions-Policy geolocation=(), which blocks it on
+ *      every Labs host, so it was removed on 2026-10-02.
  * ================================================================
  */
 
@@ -148,6 +152,20 @@ function yearEnergy(year, cfg) {
 }
 
 /* ================================================================
+   SECTION 2b · TYPED NUMBERS (no DOM access)
+================================================================ */
+
+// Shared Labs parser: accepts "60,39" and a Unicode minus, rejects anything else or out of range (null).
+function parseDecimal(text, min, max) {
+  if (text == null) return null;
+  let s = String(text).trim().replace(/[\u2212\u2012\u2013\u2014\uFE63\uFF0D]/g, '-').replace(/\s+/g, '');
+  if (/^[+-]?\d+,\d+$/.test(s)) s = s.replace(',', '.');
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= min && n <= max ? n : null;
+}
+
+/* ================================================================
    SECTION 3 · DOM LAYER (browser only)
 ================================================================ */
 if (typeof document !== 'undefined') {
@@ -159,11 +177,9 @@ if (typeof document !== 'undefined') {
     // Tabs
     tabCity: $('tab-city'),
     tabGps: $('tab-gps'),
-    tabDevice: $('tab-device'),
     // Panels
     panelCity: $('panel-city'),
     panelGps: $('panel-gps'),
-    panelDevice: $('panel-device'),
     // City search
     citySearch: $('city-search'),
     cityDropdown: $('city-dropdown'),
@@ -173,9 +189,9 @@ if (typeof document !== 'undefined') {
     // GPS inputs
     latInput: $('lat-input'),
     lonInput: $('lon-input'),
-    // Device panel
-    getLocationBtn: $('get-location-btn'),
-    deviceCoords: $('device-coords'),
+    latError: $('lat-error'),
+    lonError: $('lon-error'),
+    gpsEcho: $('gps-echo'),
     // Roof parameter sliders
     azimuthInput: $('azimuth-input'),
     tiltInput: $('tilt-input'),
@@ -192,6 +208,8 @@ if (typeof document !== 'undefined') {
     // Date + price
     dateInput: $('date-input'),
     priceInput: $('price-input'),
+    priceError: $('price-error'),
+    priceEcho: $('price-echo'),
     currencySelect: $('currency-select'),
     // Calculate
     calculateBtn: $('calculate-btn'),
@@ -225,11 +243,10 @@ if (typeof document !== 'undefined') {
   const state = {
     activeTab: 'city',
     selectedCity: null,
-    deviceCoords: null,
     matches: [],
     highlightIndex: -1,
     hasCalculated: false,
-    last: null // { cfg, location, dateStr, day, year, yearNum }
+    last: null // { cfg, p, loc, price, currency, dateStr, dayDate, day, year, yearNum }
   };
 
   /* ── Init ─────────────────────────────────────────────────── */
@@ -241,7 +258,7 @@ if (typeof document !== 'undefined') {
     els.dateInput.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
     // Tabs
-    [els.tabCity, els.tabGps, els.tabDevice].forEach(tab => {
+    [els.tabCity, els.tabGps].forEach(tab => {
       tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
 
@@ -253,8 +270,10 @@ if (typeof document !== 'undefined') {
       if (!els.cityDropdown.hidden && !e.target.closest('.search-wrapper')) closeDropdown();
     });
 
-    // Device geolocation
-    els.getLocationBtn.addEventListener('click', requestDeviceLocation);
+    // Editing a coordinate clears its error and the "Using ..." line, which
+    // described the previous value, until the next Estimate.
+    els.latInput.addEventListener('input', () => { setFieldError(els.latInput, els.latError, null); setEcho(els.gpsEcho, null); });
+    els.lonInput.addEventListener('input', () => { setFieldError(els.lonInput, els.lonError, null); setEcho(els.gpsEcho, null); });
 
     // Sliders: live readouts + live 3D scene + live recompute
     const sliders = [
@@ -265,8 +284,8 @@ if (typeof document !== 'undefined') {
 
     // Date + price also live-update the results after first calculation
     els.dateInput.addEventListener('change', onParamsChanged);
-    els.priceInput.addEventListener('input', onParamsChanged);
-    els.currencySelect.addEventListener('change', onParamsChanged);
+    els.priceInput.addEventListener('input', onPriceInput);
+    els.currencySelect.addEventListener('change', onPriceInput);
 
     // Calculate + report
     els.calculateBtn.addEventListener('click', calculate);
@@ -293,8 +312,7 @@ if (typeof document !== 'undefined') {
     state.activeTab = tabName;
     const map = {
       city: [els.tabCity, els.panelCity],
-      gps: [els.tabGps, els.panelGps],
-      device: [els.tabDevice, els.panelDevice]
+      gps: [els.tabGps, els.panelGps]
     };
     for (const [name, [tab, panel]] of Object.entries(map)) {
       const active = name === tabName;
@@ -399,41 +417,68 @@ if (typeof document !== 'undefined') {
     state.highlightIndex = -1;
   }
 
-  /* ── Device geolocation ───────────────────────────────────── */
+  /* ── Typed numbers: inline errors and the "Using ..." echo ─── */
 
-  function requestDeviceLocation() {
-    if (!('geolocation' in navigator)) {
-      showError('Geolocation is not supported by this browser. Use City Search or GPS Coords instead.');
-      return;
+  const PRICE_MAX = 100;
+  const LAT_MSG = 'Enter a latitude between -90 and 90, such as 60.39 or 60,39.';
+  const LON_MSG = 'Enter a longitude between -180 and 180, such as 5.32 or 5,32.';
+  const PRICE_MSG = `Enter a price between 0 and ${PRICE_MAX}, such as 1.50 or 1,50.`;
+
+  /** Show (msg) or clear (null) the inline message under one field. */
+  function setFieldError(input, errorEl, msg) {
+    if (msg) {
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+      input.setAttribute('aria-invalid', 'true');
+    } else {
+      errorEl.textContent = '';
+      errorEl.hidden = true;
+      input.removeAttribute('aria-invalid');
     }
-    els.getLocationBtn.disabled = true;
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        state.deviceCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        els.deviceCoords.textContent = `${state.deviceCoords.lat.toFixed(4)}, ${state.deviceCoords.lon.toFixed(4)}`;
-        els.deviceCoords.hidden = false;
-        els.getLocationBtn.disabled = false;
-        hideError();
-        if (state.hasCalculated) recompute();
-      },
-      err => {
-        els.getLocationBtn.disabled = false;
-        const reasons = {
-          1: 'Location permission was denied. You can use City Search or GPS Coords instead.',
-          2: 'Your position is currently unavailable. Try again, or use City Search.',
-          3: 'The location request timed out. Try again, or use City Search.'
-        };
-        showError(reasons[err.code] || 'Could not read your location. Use City Search or GPS Coords instead.');
-      },
-      { timeout: 10000 }
-    );
+  }
+
+  /** Show (text) or clear (null) a "Using ..." line. Cleared text, not just
+   *  hidden: aria-describedby still reads a hidden element it points at. */
+  function setEcho(el, text) {
+    el.textContent = text || '';
+    el.hidden = !text;
+  }
+
+  /** The electricity price, or null. With report, a bad value gets its message. */
+  function readPrice(report) {
+    const price = parseDecimal(els.priceInput.value, 0, PRICE_MAX);
+    if (report) setFieldError(els.priceInput, els.priceError, price === null ? PRICE_MSG : null);
+    return price;
+  }
+
+  /** Hide the results and both echo lines, so nothing older reads as the
+   *  answer. Live updates then wait for the next successful Estimate. */
+  function hideResults() {
+    els.resultsCard.hidden = true;
+    setEcho(els.gpsEcho, null);
+    setEcho(els.priceEcho, null);
+    state.hasCalculated = false;
+  }
+
+  // The price only feeds the saving, so editing it after a result redraws the
+  // saving alone. No message while typing ("1," is on the way to "1,5"); the
+  // message comes with the next Estimate or report.
+  function onPriceInput() {
+    setFieldError(els.priceInput, els.priceError, null);
+    if (!state.hasCalculated || !state.last) return;
+    state.last.price = readPrice(false);
+    state.last.currency = els.currencySelect.value;
+    renderSaving();
   }
 
   /* ── Errors ───────────────────────────────────────────────── */
 
+  /** Show an error under the button, and hide any earlier result so it
+   *  cannot be read as the answer to the new input. */
   function showError(msg) {
     els.errorMsg.textContent = msg;
     els.errorMsg.hidden = false;
+    hideResults();
   }
 
   function hideError() {
@@ -453,25 +498,28 @@ if (typeof document !== 'undefined') {
     };
   }
 
-  function getLocation() {
+  /**
+   * The chosen place. A city problem comes back as { error: message }; a
+   * coordinate problem as { invalid: true, focus } with its message shown
+   * under the field when report is true.
+   */
+  function getLocation(report) {
     if (state.activeTab === 'city') {
       if (!state.selectedCity) return { error: 'Choose a city first (type at least two letters and pick a suggestion).' };
       const c = state.selectedCity;
       return { lat: c.lat, lon: c.lon, label: `${c.name}, ${c.country}` };
     }
-    if (state.activeTab === 'gps') {
-      const lat = parseFloat(String(els.latInput.value).replace('−', '-').replace(',', '.'));
-      const lon = parseFloat(String(els.lonInput.value).replace('−', '-').replace(',', '.'));
-      if (!Number.isFinite(lat) || lat < -90 || lat > 90) return { error: 'Latitude must be a number between −90 and 90.' };
-      if (!Number.isFinite(lon) || lon < -180 || lon > 180) return { error: 'Longitude must be a number between −180 and 180.' };
-      return { lat, lon, label: `${lat.toFixed(4)}, ${lon.toFixed(4)}` };
+    const lat = parseDecimal(els.latInput.value, -90, 90);
+    const lon = parseDecimal(els.lonInput.value, -180, 180);
+    if (report) {
+      setFieldError(els.latInput, els.latError, lat === null ? LAT_MSG : null);
+      setFieldError(els.lonInput, els.lonError, lon === null ? LON_MSG : null);
     }
-    if (!state.deviceCoords) return { error: 'Press "Get My Location" first, or use City Search.' };
-    return {
-      lat: state.deviceCoords.lat,
-      lon: state.deviceCoords.lon,
-      label: `${state.deviceCoords.lat.toFixed(4)}, ${state.deviceCoords.lon.toFixed(4)}`
-    };
+    if (lat === null || lon === null) {
+      return { invalid: true, focus: lat === null ? els.latInput : els.lonInput };
+    }
+    // echo shows the numbers actually used, so "6,5" visibly became 6.5.
+    return { lat, lon, label: `${lat.toFixed(4)}, ${lon.toFixed(4)}`, echo: `Using ${lat}, ${lon}` };
   }
 
   /* ── Live readouts + 3D scene ─────────────────────────────── */
@@ -531,20 +579,27 @@ if (typeof document !== 'undefined') {
   /* ── Calculation flow ─────────────────────────────────────── */
 
   function calculate() {
-    const loc = getLocation();
-    if (loc.error) { showError(loc.error); return; }
+    const loc = getLocation(true);
+    const price = readPrice(true);
+    if (loc.error || loc.invalid || price === null) {
+      // Do not compute, and do not leave an older result showing under the error.
+      if (loc.error) showError(loc.error); else { hideError(); hideResults(); }
+      const focus = loc.focus || (price === null ? els.priceInput : null);
+      if (focus) focus.focus();
+      return;
+    }
     hideError();
     state.hasCalculated = true;
-    runModel(loc);
+    runModel(loc, price);
   }
 
   function recompute() {
-    const loc = getLocation();
-    if (loc.error) return; // keep last results until the location is valid again
-    runModel(loc);
+    const loc = getLocation(false);
+    if (loc.error || loc.invalid) return; // keep last results until the location is valid again
+    runModel(loc, readPrice(false)); // an unreadable price affects the saving only, not the yields
   }
 
-  function runModel(loc) {
+  function runModel(loc, price) {
     const p = readParams();
     const cfg = {
       lat: loc.lat,
@@ -565,8 +620,10 @@ if (typeof document !== 'undefined') {
     const day = dayEnergy(dayDate, cfg);
     const yearNum = y;
     const year = yearEnergy(yearNum, cfg);
+    const currency = els.currencySelect.value;
 
-    state.last = { cfg, p, loc, dateStr, dayDate, day, year, yearNum };
+    hideError();
+    state.last = { cfg, p, loc, price, currency, dateStr, dayDate, day, year, yearNum };
     renderResults();
   }
 
@@ -586,10 +643,15 @@ if (typeof document !== 'undefined') {
     return currency === 'kr' ? `${rounded} kr` : `${currency}${rounded}`;
   }
 
+  /** The price exactly as parsed, e.g. "1.5 kr" or "€0.25". */
+  function fmtPrice(price, currency) {
+    return currency === 'kr' ? `${price} kr` : `${currency}${price}`;
+  }
+
   function renderResults() {
     const { p, loc, day, year, yearNum, dayDate } = state.last;
-    const price = Math.max(0, parseFloat(String(els.priceInput.value).replace(',', '.')) || 0);
-    const currency = els.currencySelect.value;
+
+    setEcho(els.gpsEcho, loc.echo || null);
 
     els.resLocation.textContent = loc.label;
     els.resDate.textContent = fmtDateGB(dayDate);
@@ -598,7 +660,7 @@ if (typeof document !== 'undefined') {
 
     els.resDayKwh.textContent = fmtKwh(day.kwh);
     els.resAnnualKwh.textContent = fmtKwh(year.annualKwh);
-    els.resSaving.textContent = fmtMoney(year.annualKwh * price, currency);
+    renderSaving();
 
     els.hourlyChartTitle.textContent =
       `Generation curve, ${fmtDateGB(dayDate)} (local time, approx.)`;
@@ -608,6 +670,16 @@ if (typeof document !== 'undefined') {
     renderMonthlyChart(year.monthly);
 
     els.resultsCard.hidden = false;
+  }
+
+  /** The saving and the price echo. An unreadable price shows a prompt in
+   *  place of the figure, never a saving worked out from an older price. */
+  function renderSaving() {
+    const { price, currency, year } = state.last;
+    const readable = price !== null;
+    els.resSaving.textContent = readable ? fmtMoney(year.annualKwh * price, currency) : 'Check the price';
+    els.resSaving.classList.toggle('is-pending', !readable);
+    setEcho(els.priceEcho, readable ? `Using ${fmtPrice(price, currency)} per kWh` : null);
   }
 
   /* ── SVG charts (built with createElementNS, no innerHTML) ── */
@@ -721,9 +793,13 @@ if (typeof document !== 'undefined') {
 
   function generateReport() {
     if (!state.last) return;
-    const { p, loc, day, year, yearNum, dayDate } = state.last;
-    const price = Math.max(0, parseFloat(String(els.priceInput.value).replace(',', '.')) || 0);
-    const currency = els.currencySelect.value;
+    const { p, loc, price, currency, day, year, yearNum, dayDate } = state.last;
+    if (price === null) {
+      // No report with a blank saving: say what is wrong, at the field.
+      readPrice(true);
+      els.priceInput.focus();
+      return;
+    }
 
     els.reportGenerated.textContent = `Generated ${fmtDateGB(new Date(Date.UTC(
       new Date().getFullYear(), new Date().getMonth(), new Date().getDate()
@@ -780,6 +856,7 @@ if (typeof module !== 'undefined' && module.exports) {
     toRad,
     toDeg,
     compass16,
+    parseDecimal,
     sunPositionCompass,
     airMass,
     clearSkyDNI,

@@ -1,6 +1,6 @@
 /**
  * EcoCompass · test.js
- * Model tests for the pure functions in app.js.
+ * Model and input-parsing tests for the pure functions in app.js.
  * Run with: node --test test.js
  */
 
@@ -12,6 +12,7 @@ const assert = require('node:assert');
 const {
   toRad,
   compass16,
+  parseDecimal,
   airMass,
   clearSkyDNI,
   poaIrradiance,
@@ -113,4 +114,34 @@ test('polar night: Tromsø on 15 December yields ~0 kWh with no NaN points', () 
   assert.ok(day.kwh < 0.5, `got ${day.kwh}`);
   assert.strictEqual(day.points.length, 145);
   for (const pt of day.points) assert.ok(Number.isFinite(pt.w) && pt.w >= 0);
+});
+
+/* ── Typed numbers: the shared Labs parser ─────────────────────── */
+
+test('parseDecimal: a decimal comma is a decimal point', () => {
+  assert.strictEqual(parseDecimal('60,39', -90, 90), 60.39);
+  assert.strictEqual(parseDecimal('6,5', -90, 90), 6.5); // not 65
+  assert.strictEqual(parseDecimal('1,5', 0, 100), 1.5); // a price, not 15
+});
+
+test('parseDecimal: a Unicode minus is a minus', () => {
+  assert.strictEqual(parseDecimal('\u22125,3', -180, 180), -5.3);
+  assert.strictEqual(parseDecimal('\u22125.32', -180, 180), -5.32); // was read as +5.32
+});
+
+test('parseDecimal: a point still works, with spaces trimmed', () => {
+  assert.strictEqual(parseDecimal('60.39', -90, 90), 60.39);
+  assert.strictEqual(parseDecimal(' 5.32 ', -180, 180), 5.32);
+  assert.strictEqual(parseDecimal('1.50', 0, 100), 1.5);
+});
+
+test('parseDecimal: out of range, text and blanks are refused', () => {
+  assert.strictEqual(parseDecimal('91', -90, 90), null);
+  assert.strictEqual(parseDecimal('-181', -180, 180), null);
+  assert.strictEqual(parseDecimal('-1', 0, 100), null); // no negative price
+  assert.strictEqual(parseDecimal('abc', -90, 90), null);
+  assert.strictEqual(parseDecimal('', 0, 100), null);
+  assert.strictEqual(parseDecimal(null, 0, 100), null);
+  assert.strictEqual(parseDecimal('1.234,5', 0, 100), null); // a thousands separator is not guessed
+  assert.strictEqual(parseDecimal('60,39,1', -90, 90), null);
 });

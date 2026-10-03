@@ -20,9 +20,9 @@
   <!-- SunCalc library, local copy, no CDN dependency -->
   <script src="suncalc.js?v=e17fa013"></script>
 
-  <link rel="stylesheet" href="style.css?v=83d67ed7" />
+  <link rel="stylesheet" href="style.css?v=be6be50d" />
   <link rel="stylesheet" href="gate.css?v=34269bb1" />
-  <script src="gate.js?v=83dd306c" defer></script>
+  <script src="gate.js?v=ca77ddb2" defer></script>
   <link rel="canonical" href="https://eco.stormberry.as/" />
   <link rel="preload" href="fonts/inter/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
   <meta property="og:title" content="EcoCompass | Solar Energy Planner &amp; 3D Roof Visualiser" />
@@ -152,10 +152,6 @@
           <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 110-12 6 6 0 010 12zm0-9a3 3 0 100 6 3 3 0 000-6z"/></svg>
           GPS Coords
         </button>
-        <button id="tab-device" class="tab" role="tab" aria-selected="false" aria-controls="panel-device" data-tab="device">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M7 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2V3a1 1 0 00-1-1H7zm0 2h6v1H7V4zM4 8h12v8H4V8zm6 1a1 1 0 110 2 1 1 0 010-2z"/></svg>
-          My Device
-        </button>
       </div>
 
       <!-- Panel: City Search -->
@@ -192,31 +188,25 @@
         </div>
       </div>
 
-      <!-- Panel: Manual GPS -->
+      <!-- Panel: Manual GPS
+           Plain text fields, not type="number": a number field lets the browser
+           turn "6,5" into 65 before any script sees it. No inputmode either,
+           because iPhone decimal keypads have no minus key and western and
+           southern coordinates need one. app.js parses with parseDecimal(). -->
       <div id="panel-gps" class="tab-panel" role="tabpanel" aria-labelledby="tab-gps" hidden>
         <div class="field-row">
           <div class="field-group">
             <label for="lat-input">Latitude (−90 to 90)</label>
-            <input type="number" id="lat-input" class="text-input" placeholder="59.9139" min="-90" max="90" step="any" />
+            <input type="text" id="lat-input" class="text-input" placeholder="59.9139" autocomplete="off" spellcheck="false" aria-describedby="lat-error gps-echo" />
+            <p id="lat-error" class="field-error" hidden></p>
           </div>
           <div class="field-group">
             <label for="lon-input">Longitude (−180 to 180)</label>
-            <input type="number" id="lon-input" class="text-input" placeholder="10.7522" min="-180" max="180" step="any" />
+            <input type="text" id="lon-input" class="text-input" placeholder="10.7522" autocomplete="off" spellcheck="false" aria-describedby="lon-error gps-echo" />
+            <p id="lon-error" class="field-error" hidden></p>
           </div>
         </div>
-      </div>
-
-      <!-- Panel: Device Geolocation -->
-      <div id="panel-device" class="tab-panel" role="tabpanel" aria-labelledby="tab-device" hidden>
-        <div class="device-panel">
-          <p class="device-hint">Grant location access so we can read your GPS coordinates.</p>
-          <button id="get-location-btn" class="btn btn-secondary">
-            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
-            Get My Location
-          </button>
-          <!-- Shows retrieved GPS coords -->
-          <p id="device-coords" class="device-coords" hidden></p>
-        </div>
+        <p id="gps-echo" class="field-note" aria-live="polite" hidden></p>
       </div>
 
       <!-- ROOF PARAMETERS, always visible regardless of active tab -->
@@ -279,10 +269,12 @@
         <input type="date" id="date-input" class="text-input" />
       </div>
 
+      <!-- A price is never negative, so a decimal keypad (no minus key) is right here. -->
       <div class="field-row price-row">
         <div class="field-group">
           <label for="price-input">Electricity price per kWh</label>
-          <input type="number" id="price-input" class="text-input" value="1.50" step="0.01" min="0" />
+          <input type="text" id="price-input" class="text-input" value="1.50" inputmode="decimal" autocomplete="off" spellcheck="false" aria-describedby="price-error price-echo" />
+          <p id="price-error" class="field-error" hidden></p>
         </div>
         <div class="field-group">
           <label for="currency-select">Currency</label>
@@ -294,6 +286,7 @@
           </select>
         </div>
       </div>
+      <p id="price-echo" class="field-note" aria-live="polite" hidden></p>
 
       <!-- CALCULATE BUTTON -->
       <button id="calculate-btn" class="btn btn-primary" aria-live="polite">
@@ -675,6 +668,6 @@
   </footer>
 
   <script src="cities.js?v=2f08782c"></script>
-  <script src="app.js?v=1028d2aa"></script>
+  <script src="app.js?v=30504250"></script>
 </body>
 </html>
