@@ -1,0 +1,19 @@
+{
+  "name": "ecocompass-dev",
+  "private": true,
+  "type": "module",
+  "description": "Build and test tooling only: compiles ts/app.ts into app.js, the script the page loads, and runs the tests (TypeScript, run by Node 24 directly). The published app has no runtime dependencies, and none of these files is published.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tools/build-ts.sh",
+    "check": "tools/build-ts.sh --check",
+    "test": "node --test tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3"
+  }
+}

@@ -8,3 +8,7 @@ env/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# TypeScript tooling. npm ci puts the pinned compiler in node_modules/, which is never committed or
+# published.
+node_modules/

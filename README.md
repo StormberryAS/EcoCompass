@@ -16,7 +16,10 @@ Privacy-first solar energy planner. EcoCompass estimates daily and annual roofto
 - **Responsive layout**: optimised for mobile and desktop, two-column on wide screens.
 
 ## Architecture
-- **Vanilla HTML/CSS/JS**, no frameworks, no build step.
+- **Vanilla HTML and CSS, TypeScript**, no frameworks.
+- **TypeScript source in `ts/`, compiled JavaScript committed.** `ts/app.ts` compiles to `app.js`, at the same path the page has always loaded, as a classic script (no modules). The compiled file is committed because GitHub Pages serves the repository as it is, with no build step of its own; `.gitattributes` marks it as generated. Edit the TypeScript, never the `.js`.
+- **Vendored and generated files kept as they are.** `suncalc.js` is SunCalc 1.8.0, vendored unchanged; `ts/suncalc.d.ts` types it. `cities.js` is the shared Stormberry Labs city catalogue, written by SunApp's `update_cities.py`; `ts/cities.d.ts` types it. `gate.js` and `gate.css`, the first-run notice, are written by the shared `build-gates.py`. None of them is edited here.
+- **Build:** `npm run build` (`tools/build-ts.sh`) installs the pinned compiler (`npm ci`), compiles, then runs `bump_assets.py` to restamp the `?v=` cache stamps. `npm run check` changes nothing and fails when the committed JavaScript is not what the TypeScript compiles to. `npm test` runs the tests in `tests/` with the test runner built into Node 24. The published app has no runtime dependencies.
 - **Privacy first**, no cookies, no tracking, zero external calls; everything is computed in the browser. The page never asks for the device's location either: a place comes from city search or from typed coordinates.
 - Stormberry dark-mode glassmorphism design system, Inter typography.
 - **Sovereign AI**, built and maintained using high-speed agentic workflows.
@@ -33,11 +36,11 @@ python3 -m http.server 8000
 ```
 Open `http://localhost:8000` in your browser.
 
-### Running the model tests
-The pure energy-model functions and the number parser are covered by a `node:test` suite:
+### Running the tests
+The pure energy-model functions, the number parser and the page itself are covered by tests in `tests/`, written in TypeScript for the test runner built into Node 24 (`node:test`). Node 24 runs them as they are, with no build:
 
 ```bash
-node --test test.js
+npm test
 ```
 
 ## Credits

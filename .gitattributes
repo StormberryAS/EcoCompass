@@ -1,0 +1,14 @@
+# GitHub's language bar counts what people write, not what a tool generates or what was copied in
+# from elsewhere. The files below are one or the other, so they are marked and left out of the
+# statistics (and the diffs of generated files are collapsed by default on GitHub).
+#
+# app.js is compiled from ts/app.ts by tools/build-ts.sh (5 November 2026); edit the TypeScript.
+/app.js linguist-generated=true
+# cities.js is the shared Labs city catalogue, written by SunApp's update_cities.py into nine app
+# repositories in one run. It is kept byte for byte here; ts/cities.d.ts types it.
+/cities.js linguist-generated=true
+# gate.js, the first-run notice, is written by build-gates.py at the root of the GitHub folder,
+# shared by every Labs app; it is not edited here.
+/gate.js linguist-generated=true
+# suncalc.js is SunCalc 1.8.0 (BSD-2-Clause, mourner/suncalc), vendored and kept byte for byte.
+/suncalc.js linguist-vendored=true

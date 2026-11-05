@@ -13,7 +13,24 @@
 #
 # disclaimer.html and privacy.html are deliberately NOT excluded: they are the published
 # pages the footer links to. Only the Markdown sources are withheld.
+#
+# TypeScript (5 November 2026): the app's code is written in ts/ and compiled by tools/build-ts.sh
+# into app.js, which IS published (GitHub Pages has no build step, so the compiled file is
+# committed), as are the vendored suncalc.js and the generated cities.js and gate.js. The sources
+# (ts/, with the SunCalc and cities.js declarations), the compiler's settings (tsconfig.json), the
+# build script and the tests (tools/, tests/), the package files and .npmrc, and node_modules/,
+# where npm ci puts TypeScript, are excluded. (.npmrc and .gitattributes are dot files, which
+# Jekyll never publishes; .npmrc is listed anyway, as in AstroQuiz and the others.) The old
+# hand-written test.js, which the site served, is gone: its tests are in tests/.
 exclude:
   - LICENSE
   - README.md
   - bump_assets.py
+  - tools/
+  - tests/
+  - package.json
+  - package-lock.json
+  - .npmrc
+  - node_modules/
+  - tsconfig.json
+  - ts/
