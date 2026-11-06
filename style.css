@@ -845,6 +845,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
    own form styles off it. */
 .app-switcher-container input.switcher-pause {
   all: revert;
+  font-family: var(--font-sans);
   margin: 0 0.5rem 0.75rem 0;
   vertical-align: middle;
   accent-color: var(--accent-blue);
