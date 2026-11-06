@@ -15,10 +15,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const COMPILED = ['app.js'];
-/** The generator output, by sha256, as at 718d619 (cities.js is also SunApp's, byte for byte). */
+/** The generator output, by sha256: cities.js and gate.css as at 718d619 (cities.js is also SunApp's, byte for byte),
+ * gate.js as the current build-gates.py wrote it on 6 November 2026 (tsc 6.0.3; script sha256 e184db18...52ca). */
 const GENERATED: Record<string, string> = {
   'cities.js': '2f08782c7f41df5eb95c15a4a668a389505bd4bfba059040d048cbc1324afce2',
-  'gate.js': 'ca77ddb2efb0d86e9771f8b5d3b2d3f83e1e74f3799bf4c0b47041c92e55a7a5',
+  'gate.js': 'c72dd89ab340ddadf99ed2258dc73d9d52501642dafa955d9fd9682fb98c099f',
   'gate.css': '34269bb1eacf8777a86d51eb06cd7df70e26b1281db7295e0e33946086b2cb06',
 };
 const GENERATED_JS = Object.keys(GENERATED).filter((f) => f.endsWith('.js'));
@@ -37,7 +38,7 @@ test('tools/build-ts.sh --check passes: app.js equals a fresh compile', () => {
 test('the generator output (cities.js, gate.js, gate.css) is unchanged, byte for byte', () => {
   for (const [f, sha] of Object.entries(GENERATED)) assert.equal(sha256(f), sha, f);
   assert.match(readFileSync(`${root}cities.js`, 'utf8'), /^\/\/ Stormberry Labs shared city catalogue\.\n\/\/ GENERATED FILE, DO NOT EDIT BY HAND\.\n/);
-  assert.match(readFileSync(`${root}gate.js`, 'utf8'), /GENERATED FILE\. Do not edit this copy/);
+  assert.match(readFileSync(`${root}gate.js`, 'utf8'), /^"use strict";\n\/\*! STORMBERRY FIRST-RUN GATE \(behaviour\)\. EcoCompass, dismissible tier\.\n {4}GENERATED FILE: build-gates\.py /);
 });
 
 test('the vendored SunCalc is 1.8.0, byte for byte', () => {
